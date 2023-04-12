@@ -132,6 +132,6 @@ dmypy.json
 .idea
 
 # Develops
-backend/docs
-backend/static
-backend/media
+backend/docs/
+backend/static/
+backend/media/

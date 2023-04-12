@@ -28,13 +28,15 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = CustomUser.objects.all()
     serializer_class = serializers.UserSerializer
     permission_classes = (AllowAny,)
+    retrieve_permission = (IsAuthenticated,)
     pagination_class = PageLimitPagination
 
-    def retrieve(self, request, *args, **kwargs):
-        if not request.user.is_authenticated:
-            detail = {'detail': 'Учетные данные не были предоставлены.'}
-            return Response(detail, status=status.HTTP_401_UNAUTHORIZED)
-        return super().retrieve(request, *args, **kwargs)
+    def get_permissions(self):
+        if self.action == 'retrieve':
+            return [permission() for permission in self.retrieve_permission]
+        else:
+            response = super().get_permissions()
+            return response
 
     @action(
         methods=['GET'],
@@ -204,9 +206,9 @@ class FavoriteViewSet(CreateViewSet):
     def delete(self, request, recipe_id=None):
         recipe = get_object_or_404(models.Recipe, id=recipe_id)
         result = models.Favorite.objects.filter(
-                    user=request.user,
-                    recipe=recipe,
-                )
+            user=request.user,
+            recipe=recipe,
+        )
         if result.exists():
             result.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
@@ -231,9 +233,9 @@ class SubscriptionViewSet(CreateViewSet):
     def delete(self, request, user_id=None):
         following = get_object_or_404(models.CustomUser, id=user_id)
         result = models.Subscription.objects.filter(
-                    user=request.user,
-                    following=following,
-                )
+            user=request.user,
+            following=following,
+        )
         if result.exists():
             result.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
@@ -258,9 +260,9 @@ class ShoppingCartViewSet(CreateViewSet):
     def delete(self, request, recipe_id=None):
         recipe = get_object_or_404(models.Recipe, id=recipe_id)
         result = models.ShoppingCart.objects.filter(
-                    user=request.user,
-                    recipe=recipe,
-                )
+            user=request.user,
+            recipe=recipe,
+        )
         if result.exists():
             result.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)

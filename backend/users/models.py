@@ -5,15 +5,16 @@ from django.db import models
 
 class CustomUser(AbstractUser):
     """Переопределяем модель пользователя, добавив/изменив необходимые поля"""
+
     username = models.CharField(
         'Логин',
         max_length=150,
         unique=True,
         null=False,
         validators=[validators.RegexValidator(
-                r'^[\w.@+-]+\Z',
-                'Недопустимые символы в логине!'
-            )],
+            r'^[\w.@+-]+\Z',
+            'Недопустимые символы в логине!'
+        )],
     )
     email = models.EmailField(
         'Электронная почта',

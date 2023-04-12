@@ -10,11 +10,23 @@ class Tag(models.Model):
         unique=True,
         max_length=200,
         help_text='Название тега',
+        validators=[
+            validators.RegexValidator(
+                r'[-+\w\s]+',
+                'Недопустимые символы в имени!'
+            )
+        ]
     )
     color = models.CharField(
         'Цвет',
         max_length=7,
         help_text='Цвет тега',
+        validators=[
+            validators.RegexValidator(
+                r'#[a-fA-F0–9]{6}',
+                'Недопустимые символы в коде цвета!'
+            )
+        ]
     )
     slug = models.SlugField(
         'Путь',

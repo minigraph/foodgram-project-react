@@ -2,10 +2,17 @@ import base64
 
 from django.core.files.base import ContentFile
 from django.core.validators import RegexValidator
+from django.db import transaction
 from django.shortcuts import get_object_or_404
 from recipes import models
 from rest_framework import serializers, validators
 from users.models import CustomUser
+
+
+def check_user_authentication(context):
+    """ Проверка авторизации пользователя"""
+    return ('request' in context
+            and context['request'].user.is_authenticated)
 
 
 class Base64ImageField(serializers.ImageField):
@@ -40,6 +47,32 @@ class UserSerializer(serializers.ModelSerializer):
     is_subscribed = serializers.SerializerMethodField(
         method_name='_get_is_subscribed')
 
+    def _get_is_subscribed(self, obj):
+        if not check_user_authentication(self.context):
+            return False
+
+        return models.Subscription.objects.filter(
+            user=self.context['request'].user,
+            following=obj
+        ).exists()
+
+    def create(self, validated_data):
+        return models.CustomUser.objects.create_user(**validated_data)
+
+    def to_representation(self, instance):
+        response = super().to_representation(instance)
+        response.pop('password')
+        if ('request' in self.context
+                and self.context['request'].method == 'POST'):
+            response.pop('is_subscribed')
+        return response
+
+    def validate_username(self, value):
+        if value == 'me':
+            raise serializers.ValidationError(
+                'Нельзя зарегистрировать пользователя с таким именем!')
+        return value
+
     class Meta:
         model = CustomUser
         fields = (
@@ -51,35 +84,6 @@ class UserSerializer(serializers.ModelSerializer):
             'last_name',
             'is_subscribed',
         )
-
-    def to_representation(self, instance):
-        response = super().to_representation(instance)
-        response.pop('password')
-        if ('request' in self.context and
-                self.context['request'].method == 'POST'):
-            response.pop('is_subscribed')
-        return response
-
-    def create(self, validated_data):
-        return models.CustomUser.objects.create_user(**validated_data)
-
-    def _get_is_subscribed(self, obj):
-        if 'request' not in self.context.keys():
-            return False
-
-        request = self.context['request']
-        if not request.user.is_authenticated:
-            return False
-        return models.Subscription.objects.filter(
-            user=request.user,
-            following=obj
-        ).exists()
-
-    def validate_username(self, value):
-        if value == 'me':
-            raise serializers.ValidationError(
-                'Нельзя зарегистрировать пользователя с таким именем!')
-        return value
 
 
 class ChangePasswordSerializer(serializers.Serializer):
@@ -96,7 +100,10 @@ class UnitSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = models.Unit
-        fields = ('id', 'name',)
+        fields = (
+            'id',
+            'name',
+        )
 
 
 class TagSerializer(serializers.ModelSerializer):
@@ -115,7 +122,12 @@ class TagSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = models.Tag
-        fields = ('id', 'name', 'color', 'slug',)
+        fields = (
+            'id',
+            'name',
+            'color',
+            'slug',
+        )
 
 
 class IngredientSerializer(serializers.ModelSerializer):
@@ -129,7 +141,11 @@ class IngredientSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = models.Ingredient
-        fields = ('id', 'name', 'measurement_unit')
+        fields = (
+            'id',
+            'name',
+            'measurement_unit',
+        )
 
 
 class IngredientRecipeSerializer(serializers.ModelSerializer):
@@ -143,15 +159,19 @@ class IngredientRecipeSerializer(serializers.ModelSerializer):
         source='ingredient'
     )
 
-    class Meta:
-        model = models.IngredientRecipe
-        fields = ('id', 'name', 'amount')
-
     def to_representation(self, instance):
         measurement_unit = instance.ingredient.measurement_unit
         response = super().to_representation(instance)
         response['measurement_unit'] = measurement_unit.name
         return response
+
+    class Meta:
+        model = models.IngredientRecipe
+        fields = (
+            'id',
+            'name',
+            'amount'
+        )
 
 
 class RecipeBaseSerializer(serializers.ModelSerializer):
@@ -180,6 +200,24 @@ class RecipeReadSerializer(RecipeBaseSerializer):
     is_in_shopping_cart = serializers.SerializerMethodField(
         method_name='_get_is_in_shopping_cart')
 
+    def _get_is_favorited(self, obj):
+        if not check_user_authentication(self.context):
+            return False
+
+        return models.Favorite.objects.filter(
+            user=self.context['request'].user,
+            recipe=obj
+        ).exists()
+
+    def _get_is_in_shopping_cart(self, obj):
+        if not check_user_authentication(self.context):
+            return False
+
+        return models.ShoppingCart.objects.filter(
+            user=self.context['request'].user,
+            recipe=obj
+        ).exists()
+
     class Meta:
         model = models.Recipe
         fields = (
@@ -196,40 +234,13 @@ class RecipeReadSerializer(RecipeBaseSerializer):
         )
         read_only_fields = ('author',)
 
-    def to_representation(self, instance):
-        response = super().to_representation(instance)
-        return response
-
-    def _get_is_favorited(self, obj):
-        if 'request' not in self.context:
-            return False
-
-        request = self.context['request']
-        if not request.user.is_authenticated:
-            return False
-        return models.Favorite.objects.filter(
-            user=request.user,
-            recipe=obj
-        ).exists()
-
-    def _get_is_in_shopping_cart(self, obj):
-        if 'request' not in self.context:
-            return False
-
-        request = self.context['request']
-        if not request.user.is_authenticated:
-            return False
-        return models.ShoppingCart.objects.filter(
-            user=request.user,
-            recipe=obj
-        ).exists()
-
 
 class RecipeSerializer(RecipeReadSerializer):
     tags = serializers.PrimaryKeyRelatedField(
         queryset=models.Tag.objects.all(), many=True)
     ingredients = IngredientRecipeSerializer(many=True)
 
+    @transaction.atomic
     def create(self, validated_data):
         tags = validated_data.pop('tags')
         ingredients = validated_data.pop('ingredients')
@@ -238,17 +249,18 @@ class RecipeSerializer(RecipeReadSerializer):
             **validated_data,
             author=author
         )
+
+        list_ingredient = []
         for position in ingredients:
-            models.IngredientRecipe.objects.create(
-                ingredient=position['ingredient'],
-                recipe=recipe,
-                amount=position['amount']
-                )
+            list_ingredient.append(
+                models.IngredientRecipe(**position, recipe=recipe)
+            )
+        models.IngredientRecipe.objects.bulk_create(list_ingredient)
+
+        list_tags = []
         for tag in tags:
-            models.TagRecipe.objects.create(
-                tag=tag,
-                recipe=recipe,
-                )
+            list_tags.append(models.TagRecipe(tag=tag, recipe=recipe))
+        models.TagRecipe.objects.bulk_create(list_tags)
         return recipe
 
     def update(self, instance, validated_data):
@@ -300,19 +312,22 @@ class FavoriteSerializer(serializers.ModelSerializer):
         default=CurrentRecipeDefault()
     )
 
+    def to_representation(self, instance):
+        serializer = RecipeBaseSerializer(instance.recipe)
+        return serializer.data
+
     class Meta:
         model = models.Favorite
-        fields = ('user', 'recipe', )
+        fields = (
+            'user',
+            'recipe',
+        )
         validators = [
             validators.UniqueTogetherValidator(
                 queryset=models.Favorite.objects.all(),
                 fields=('user', 'recipe')
             )
         ]
-
-    def to_representation(self, instance):
-        serializer = RecipeBaseSerializer(instance.recipe)
-        return serializer.data
 
 
 class ShoppingCartSerializer(serializers.ModelSerializer):
@@ -326,8 +341,15 @@ class ShoppingCartSerializer(serializers.ModelSerializer):
         default=CurrentRecipeDefault()
     )
 
+    def to_representation(self, instance):
+        serializer = RecipeBaseSerializer(instance.recipe)
+        return serializer.data
+
     class Meta:
-        fields = ('user', 'recipe', )
+        fields = (
+            'user',
+            'recipe',
+        )
         model = models.ShoppingCart
         validators = [
             validators.UniqueTogetherValidator(
@@ -335,10 +357,6 @@ class ShoppingCartSerializer(serializers.ModelSerializer):
                 fields=('user', 'recipe')
             )
         ]
-
-    def to_representation(self, instance):
-        serializer = RecipeBaseSerializer(instance.recipe)
-        return serializer.data
 
 
 class SubscriptionSerializer(serializers.ModelSerializer):
@@ -348,9 +366,10 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         default=serializers.CurrentUserDefault()
     )
 
-    class Meta:
-        exclude = ('following', )
-        model = models.Subscription
+    def __get_user(self, view):
+        """Получить экземпляр User по id из пути."""
+        id = view.kwargs.get('user_id')
+        return get_object_or_404(models.CustomUser, id=id)
 
     def to_representation(self, instance):
         author = instance.following
@@ -364,11 +383,6 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         response['recipes_count'] = recipes.count()
         return response
 
-    def __get_user(self, view):
-        """Получить экземпляр User по id из пути."""
-        id = view.kwargs.get('user_id')
-        return get_object_or_404(models.CustomUser, id=id)
-
     def validate(self, data):
         user = self.context.get('request').user
         following = self.__get_user(self.context.get('view'))
@@ -381,3 +395,7 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 'Такая подписка уже существует!')
         return data
+
+    class Meta:
+        exclude = ('following', )
+        model = models.Subscription
