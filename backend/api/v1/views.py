@@ -6,14 +6,14 @@ from django.http import FileResponse
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from recipes import models
-from rest_framework import filters, mixins, pagination, status, viewsets
+from rest_framework import mixins, pagination, status, viewsets
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from users.models import CustomUser
 
-from . import permissions, serializers
+from . import filters, permissions, serializers
 from .pagination import PageLimitPagination
 
 
@@ -59,7 +59,6 @@ class UserViewSet(viewsets.ModelViewSet):
         serializer = serializers.ChangePasswordSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = request.user
-        user = models.CustomUser.objects.get(pk=10)
         if user.check_password(request.data.get('current_password')):
             user.set_password(request.data.get('new_password'))
             return Response(status=status.HTTP_204_NO_CONTENT)
@@ -133,18 +132,35 @@ class RecipeViewSet(viewsets.ModelViewSet):
     pagination_class = PageLimitPagination
     permission_classes = (permissions.OwnerOrReadOnly,)
     filter_backends = (DjangoFilterBackend, )
-    filterset_fields = (
-        'is_favorited',
-        'is_in_shopping_cart',
-        'author__id',
-        'tags__slug'
-    )
+    filterset_class = filters.RecipeFilter
+
+    def _get_related_data(self, user, favorite):
+        if favorite:
+            return user.favorites.all().values_list('recipe_id', flat=True)
+        else:
+            return user.shopping_cart.all().values_list(
+                'recipe_id', flat=True)
 
     def get_serializer_class(self):
         if self.request.method == 'GET':
             return serializers.RecipeReadSerializer
         else:
             return serializers.RecipeSerializer
+
+    def get_queryset(self):
+        user, data = self.request.user, models.Recipe.objects
+        is_favorited = self.request.query_params.get('is_favorited')
+        shopping_cart = self.request.query_params.get('is_in_shopping_cart')
+        if not is_favorited and not shopping_cart:
+            return data.all()
+        elif is_favorited and shopping_cart:
+            list_favorite = set(self._get_related_data(user, True))
+            list_shopping = set(self._get_related_data(user, False))
+            list_id = list(list_favorite.intersection(list_shopping))
+            return data.filter(id__in=list_id)
+        else:
+            list_id = list(self._get_related_data(user, is_favorited))
+            return data.filter(id__in=list_id)
 
     @action(
         methods=['GET'],
@@ -283,5 +299,5 @@ class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = serializers.IngredientSerializer
     permission_classes = (AllowAny, )
     pagination_class = None
-    filter_backends = (filters.SearchFilter, )
+    filter_backends = (filters.CustomNameSearch, )
     search_fields = ('^name', )

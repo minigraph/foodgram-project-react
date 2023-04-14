@@ -1,9 +1,9 @@
-import sqlite3
 import logging
 import os
 import sys
 
 from django.core.management.base import BaseCommand
+from recipes.models import Ingredient, Unit
 
 logger = logging.getLogger(__name__)
 
@@ -56,18 +56,10 @@ class Command(BaseCommand):
     def clear_table(self):
         table = self.tablename
 
-        cn = sqlite3.connect('backend/db.sqlite3')
-
-        cur = cn.cursor()
-
-        cur.execute(
-            f'''
-            DELETE FROM {table}
-            '''
-        )
-        cn.commit()
-        cur.close()
-        cn.close()
+        if table == 'recipes_ingredient':
+            Ingredient.objects.all().delete()
+        else:
+            Unit.objects.all().delete()
 
 
 def initialize_logger():

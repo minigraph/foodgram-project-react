@@ -8,7 +8,7 @@ from .views import (FavoriteViewSet, IngredientViewSet, RecipeViewSet,
 v1_router = routers.DefaultRouter()
 v1_router.register(r'users', UserViewSet)
 v1_router.register(r'tags', TagViewSet)
-v1_router.register(r'recipes', RecipeViewSet)
+v1_router.register(r'recipes', RecipeViewSet, basename='recipes')
 v1_router.register(r'auth/token', TokenViewSet, basename='token')
 v1_router.register(
     r'recipes/(?P<recipe_id>\d+)/shopping_cart',

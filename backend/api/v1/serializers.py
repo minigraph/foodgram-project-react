@@ -131,7 +131,7 @@ class TagSerializer(serializers.ModelSerializer):
 
 
 class IngredientSerializer(serializers.ModelSerializer):
-    id = serializers.IntegerField()
+    id = serializers.IntegerField(required=False)
     name = serializers.CharField(required=False)
     measurement_unit = serializers.SlugRelatedField(
         required=False,
@@ -232,7 +232,7 @@ class RecipeReadSerializer(RecipeBaseSerializer):
             'text',
             'cooking_time',
         )
-        read_only_fields = ('author',)
+        read_only_fields = ('author', 'is_favorited', 'is_in_shopping_cart')
 
 
 class RecipeSerializer(RecipeReadSerializer):

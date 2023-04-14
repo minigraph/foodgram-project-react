@@ -16,12 +16,9 @@ class Command(BaseCommand):
 
         initialize_logger()
 
-        DATA_DIR = os.path.join(
-            os.path.join(settings.BASE_DIR, os.pardir),
-            "data"
-        )
+        data_dir = os.path.join(settings.BASE_DIR, "data")
 
-        files = os.listdir(DATA_DIR)
+        files = os.listdir(data_dir)
 
         logger.info(
             'files to load:'
@@ -38,7 +35,7 @@ class Command(BaseCommand):
 
         for key, value in parameters.items():
             class_name = key
-            file_path = os.path.join(DATA_DIR, value['file_name'])
+            file_path = os.path.join(data_dir, value['file_name'])
             class_obj = value['class']
             logger.info(
                 '----------------------------\n'
@@ -80,7 +77,7 @@ class Command(BaseCommand):
                         serializer_units.save()
                     else:
                         logger.error(
-                            f'serializer error:\n {serializer_units.errors}'
+                            f'serializer error:\n {serializer_units.errors[0]}'
                         )
                         continue
 

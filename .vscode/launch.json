@@ -12,6 +12,7 @@
             "program": "${workspaceFolder}/backend/manage.py",
             "args": [
                 "runserver"
+                // "clear_table", "tablename", "all"
             ],
             "django": true,
             "justMyCode": true

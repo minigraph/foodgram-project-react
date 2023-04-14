@@ -202,9 +202,9 @@ class IngredientRecipe(models.Model):
 class ShoppingCart(models.Model):
     """Список покупок"""
     user = models.ForeignKey(
-        CustomUser, on_delete=models.CASCADE)
+        CustomUser, on_delete=models.CASCADE, related_name='shopping_cart')
     recipe = models.ForeignKey(
-        Recipe, on_delete=models.CASCADE)
+        Recipe, on_delete=models.CASCADE, related_name='in_users_cart')
 
     class Meta:
         verbose_name = 'Список покупок'
