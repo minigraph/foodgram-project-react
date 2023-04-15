@@ -21,12 +21,12 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 SECRET_KEY = os.getenv('SECRET_KEY', 'a&a%000000hhaaaaa^##a0)aaa@0aaa=aa&aaaaa^##aaa0(aa')
 
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
-    '*',
+    '51.250.106.229',
 ]
 
 
