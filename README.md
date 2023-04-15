@@ -8,6 +8,10 @@
 Адрес проекта в сети:
 * Foodgram (http://51.250.106.229/)
 
+Административная панель:
+* admin
+* admin
+
 Использовано:
 * Python v.3.7.5 (https://docs.python.org/3.7/)
 * Django v.2.2.19 (https://docs.djangoproject.com/en/2.2/)
