@@ -190,6 +190,8 @@ class RecipeViewSet(viewsets.ModelViewSet):
             text.append(f'{position[0]} - {position[1]}')
 
         name_file = uuid.uuid4().hex + '.txt'
+        if not os.path.isdir("temp"):
+            os.mkdir("temp")
         file_path = os.path.join(
             os.path.join(settings.BASE_DIR, 'temp'), name_file)
         f = open(file_path, "w+")

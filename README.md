@@ -379,3 +379,4 @@ Status code: 200
 * * tlg: @minigraf 
 * * e-mail: minigraph@yandex.ru;
 
+[![Workflow](https://github.com/minigraph/foodgram-project-react/actions/workflows/foodgram_workflow.yml/badge.svg?branch=master)](https://github.com/minigraph/foodgram-project-react/actions/workflows/foodgram_workflow.yml)
