@@ -42,7 +42,7 @@ jobs:
         with:
           context: backend
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/foodgram-project-react:latest
+          tags: ${{ secrets.DOCKER_USERNAME }}/foodgram-project-react:v1.1.1
 
   deploy:
       runs-on: ubuntu-latest
@@ -57,7 +57,7 @@ jobs:
           passphrase: ${{ secrets.PASSPHRASE }}
           script: |
             sudo docker-compose stop
-            sudo docker-compose rm backend
+            sudo docker-compose rm backend -y
             touch ./infra/.env
             cd infra
             echo DB_ENGINE=${{ secrets.DB_ENGINE }} >> .env
@@ -69,13 +69,13 @@ jobs:
             echo SECRET_KEY=${{ secrets.SECRET_KEY }} >> .env
             cd ..
             sudo docker-compose up -d 
-  send_message:
-    runs-on: ubuntu-latest
-    needs: deploy
-    steps:
-    - name: send message
-      uses: appleboy/telegram-action@master
-      with:
-        to: ${{ secrets.TELEGRAM_TO }}
-        token: ${{ secrets.TELEGRAM_TOKEN }}
-        message: ${{ github.workflow }} успешно выполнен! 
+  # send_message:
+  #   runs-on: ubuntu-latest
+  #   needs: deploy
+  #   steps:
+  #   - name: send message
+  #     uses: appleboy/telegram-action@master
+  #     with:
+  #       to: ${{ secrets.TELEGRAM_TO }}
+  #       token: ${{ secrets.TELEGRAM_TOKEN }}
+  #       message: ${{ github.workflow }} успешно выполнен! 
