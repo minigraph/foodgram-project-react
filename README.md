@@ -71,20 +71,11 @@ docker-compose exec web python manage.py createsuperuser
 sudo docker-compose exec web python manage.py collectstatic --no-input
 ```
 
-Проект доступен по адресу:
-```
-http://51.250.106.229/
-```
 
 ### Заполнить базу данных тестовыми данными:
 Выполните команду в консоле:
 ```
 sudo docker-compose exec web python manage.py load_data
-```
-Для доступа в административную панель:
-```
-login: admin
-password: admin
 ```
 
 ### Документация. Примеры запросов:
@@ -369,7 +360,7 @@ Status code: 200
 ```
 
 Подробная инструкция после установки и запуска проекта по адресу:
-[Документация ReDoc](http://51.250.106.229/api/docs/)
+[Документация ReDoc](http://localhost/api/docs/)
 
 ### Автор:
 * Михаил Никитин
